@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diet Passport</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: a phone-sized app (the prototype) beside a short concept note on wide screens. */
+:root{
+  --bg:#EEF1ED; --surface:#FFFFFF; --fg:#18211D; --muted:#5F6C65; --line:#DAE0DB;
+  --accent:#E8590C; --accent-fg:#FFFFFF;
+  --safe:#1B8A57; --ask:#A8690F; --avoid:#BE3E2B;
+  --font-display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --font-body:'Figtree','Segoe UI',system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1512; --surface:#1A231F; --fg:#EAF0EC; --muted:#93A29A; --line:#2B3731;
+  --accent:#FF8A3D; --accent-fg:#1A1208;
+  --safe:#4CC38A; --ask:#E5B455; --avoid:#F08A78; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1512; --surface:#1A231F; --fg:#EAF0EC; --muted:#93A29A; --line:#2B3731;
+  --accent:#FF8A3D; --accent-fg:#1A1208;
+  --safe:#4CC38A; --ask:#E5B455; --avoid:#F08A78; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.4;
+  padding-block:20px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3{font-family:var(--font-display);margin:0;text-wrap:balance;line-height:1.15}
+
+.wrap{display:flex;gap:56px;justify-content:center;align-items:flex-start;max-width:980px;margin:0 auto}
+.note{flex:1 1 0;min-width:0;max-width:420px;padding-top:36px;display:none}
+.note h1{font-size:40px;letter-spacing:-.02em}
+.note p{color:var(--muted);margin:14px 0 0;max-width:46ch}
+.note .legend{display:flex;flex-direction:column;gap:10px;margin-top:26px}
+.note .try{margin-top:28px;padding-top:18px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
+.note .try b{color:var(--fg)}
+@media (min-width:900px){.note{display:block}}
+
+.phone{position:relative;width:min(100%,400px);height:min(820px,calc(100dvh - 40px));min-height:580px;margin:0 auto;
+  background:var(--surface);border:1px solid var(--line);border-radius:28px;overflow:hidden;display:flex;flex-direction:column;
+  box-shadow:0 18px 50px rgba(20,30,25,.14)}
+.scroll{flex:1 1 auto;min-height:0;overflow-y:auto;padding:18px 18px 24px}
+.bar{flex:none;padding:12px 18px;border-top:1px solid var(--line);background:var(--surface)}
+
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-radius:12px;padding:14px 16px;
+  background:var(--accent);color:var(--accent-fg);font-weight:700;font-size:15px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
+.btn.small{width:auto;padding:8px 14px;font-size:13px;border-radius:10px}
+.link{background:none;border:0;padding:0;color:var(--accent);font-weight:700;font-size:13px}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+
+/* onboarding */
+.pref-list{display:flex;flex-direction:column;gap:8px;margin-top:18px}
+.pref{display:flex;align-items:center;gap:12px;text-align:left;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 12px}
+.pref .box{flex:none;width:22px;height:22px;border-radius:6px;border:2px solid var(--line);display:grid;place-items:center;color:var(--accent-fg);font-size:14px;font-weight:700}
+.pref[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 9%,var(--surface))}
+.pref[aria-pressed="true"] .box{background:var(--accent);border-color:var(--accent)}
+.pref b{display:block;font-size:15px}
+.pref small{color:var(--muted);font-size:13px}
+.fine{color:var(--muted);font-size:12.5px;margin:14px 0 0}
+
+/* top rows */
+.topline{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.back{background:none;border:0;padding:4px 6px 4px 0;font-weight:700;color:var(--fg);font-size:14px}
+.passport{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--accent) 9%,var(--surface));border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line))}
+.passport .lab{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase;width:100%;display:flex;justify-content:space-between;align-items:center}
+.chip{display:inline-flex;align-items:center;padding:3px 10px;border-radius:99px;background:var(--surface);border:1px solid var(--line);font-size:13px;font-weight:600}
+
+/* restaurants */
+.rest{display:block;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;margin-top:12px}
+.rest h3{font-size:19px}
+.rest .meta{color:var(--muted);font-size:13px;margin-top:3px}
+.fitbar{display:flex;height:8px;border-radius:99px;overflow:hidden;margin-top:12px;background:var(--line);gap:2px}
+.fitbar i{display:block;height:100%}
+.fitbar .s{background:var(--safe)} .fitbar .a{background:var(--ask)} .fitbar .n{background:var(--avoid);opacity:.55}
+.counts{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:13px;font-weight:600}
+.counts .s{color:var(--safe)} .counts .a{color:var(--ask)} .counts .n{color:var(--avoid)}
+
+/* dishes */
+.seg{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:14px 0 4px;font-size:13px;color:var(--muted)}
+.toggle{display:inline-flex;align-items:center;gap:8px;background:none;border:0;padding:0;font-size:13px;font-weight:600}
+.toggle .sw{width:34px;height:20px;border-radius:99px;background:var(--line);position:relative;transition:background .15s}
+.toggle .sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--surface);transition:transform .15s}
+.toggle[aria-pressed="true"] .sw{background:var(--accent)}
+.toggle[aria-pressed="true"] .sw::after{transform:translateX(14px)}
+.dish{display:flex;gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
+.dish:last-child{border-bottom:0}
+.dish .main{flex:1 1 0;min-width:0;text-align:left;background:none;border:0;padding:0}
+.dish.dim .main{opacity:.55}
+.dish .nm{display:flex;align-items:center;gap:8px;font-weight:700}
+.dish .ds{color:var(--muted);font-size:13px;margin-top:2px}
+.dish .pr{font-weight:600;margin-top:4px;font-variant-numeric:tabular-nums}
+.why{font-size:13px;margin-top:6px;font-weight:500}
+.why.safe{color:var(--safe)} .why.ask{color:var(--ask)} .why.avoid{color:var(--avoid)}
+.act{flex:none;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:6px}
+.add{border:1.5px solid var(--accent);color:var(--accent);background:var(--surface);border-radius:10px;padding:7px 18px;font-weight:700;font-size:13px}
+.add.ask{border-color:var(--ask);color:var(--ask)}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.badge::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.badge.safe,.badge.confirmed{color:var(--safe);background:color-mix(in srgb,var(--safe) 13%,var(--surface))}
+.badge.ask{color:var(--ask);background:color-mix(in srgb,var(--ask) 14%,var(--surface))}
+.badge.avoid{color:var(--avoid);background:color-mix(in srgb,var(--avoid) 12%,var(--surface))}
+.vm{flex:none;width:15px;height:15px;border:1.5px solid;display:inline-grid;place-items:center;border-radius:3px}
+.vm::after{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.vm.v{color:#1E8E3E} .vm.n{color:#B3261E}
+
+/* sheets */
+.scrim{position:absolute;inset:0;background:rgba(10,16,13,.5);display:flex;align-items:flex-end;z-index:5}
+.sheet{width:100%;max-height:90%;overflow-y:auto;background:var(--surface);border-radius:22px 22px 0 0;padding:20px 18px 22px;border-top:1px solid var(--line)}
+.sheet h2{font-size:22px}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.tag{font-size:12.5px;padding:3px 9px;border-radius:99px;border:1px solid var(--line);color:var(--muted);font-weight:600}
+.tag.hit{color:var(--avoid);border-color:color-mix(in srgb,var(--avoid) 45%,var(--line));background:color-mix(in srgb,var(--avoid) 9%,var(--surface))}
+.tag.trace{color:var(--ask);border-color:color-mix(in srgb,var(--ask) 45%,var(--line));border-style:dashed}
+.sec{margin-top:18px}
+.sec .eyebrow{margin-bottom:2px}
+textarea{width:100%;min-height:92px;resize:vertical;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--bg);color:var(--fg);font:inherit;font-size:14px;margin-top:8px}
+.thread{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.msg{max-width:86%;padding:9px 12px;border-radius:14px;font-size:14px}
+.msg.me{align-self:flex-end;background:var(--accent);color:var(--accent-fg);border-bottom-right-radius:4px}
+.msg.them{align-self:flex-start;background:var(--bg);border:1px solid var(--line);border-bottom-left-radius:4px}
+.msg small{display:block;opacity:.7;font-size:11.5px;margin-top:3px}
+.typing{align-self:flex-start;color:var(--muted);font-size:13px}
+.row{display:flex;gap:10px;margin-top:16px}
+
+/* cart */
+.line{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}
+.line .t{flex:1 1 0;min-width:0}
+.line .t b{display:block}
+.qty{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.qty button{background:none;border:0;width:30px;height:30px;font-weight:700;font-size:16px}
+.qty span{min-width:22px;text-align:center;font-weight:700;font-variant-numeric:tabular-nums}
+.check{margin-top:16px;padding:12px 14px;border-radius:14px;border:1px solid var(--line)}
+.check.ok{background:color-mix(in srgb,var(--safe) 10%,var(--surface));border-color:color-mix(in srgb,var(--safe) 40%,var(--line))}
+.check.warn{background:color-mix(in srgb,var(--ask) 11%,var(--surface));border-color:color-mix(in srgb,var(--ask) 45%,var(--line))}
+.check.bad{background:color-mix(in srgb,var(--avoid) 10%,var(--surface));border-color:color-mix(in srgb,var(--avoid) 45%,var(--line))}
+.check b{display:block;margin-bottom:2px}
+.check p{margin:0;font-size:13.5px;color:var(--muted)}
+.bill{margin-top:16px;display:flex;flex-direction:column;gap:6px;font-size:14px;font-variant-numeric:tabular-nums}
+.bill div{display:flex;justify-content:space-between}
+.bill .tot{font-weight:700;font-size:16px;padding-top:8px;border-top:1px dashed var(--line);margin-top:4px}
+.ticket{margin-top:18px;border:1.5px dashed var(--fg);border-radius:6px;padding:14px;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:13px;background:var(--bg)}
+.ticket .hd{display:flex;justify-content:space-between;font-weight:700;letter-spacing:.04em}
+.flags{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.flag{background:var(--avoid);color:var(--surface);font-weight:700;padding:3px 8px;border-radius:3px;letter-spacing:.04em}
+.ticket ul{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.okmark{width:56px;height:56px;border-radius:50%;background:var(--safe);color:var(--surface);display:grid;place-items:center;font-size:28px;font-weight:700;margin:6px 0 14px}
+.toast{position:absolute;left:18px;right:18px;bottom:84px;background:var(--fg);color:var(--bg);padding:10px 14px;border-radius:12px;font-size:13.5px;font-weight:600;z-index:9}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <aside class="note">
+    <div class="eyebrow">Product concept for Swiggy</div>
+    <h1>Diet Passport</h1>
+    <p>Set how you eat once. Every restaurant menu then shows, dish by dish, what fits you, what to ask the kitchen first, and what to skip. The kitchen gets a ticket that carries your diet with the order.</p>
+    <div class="legend">
+      <div><span class="badge safe">Fits your diet</span></div>
+      <div><span class="badge ask">Ask restaurant</span></div>
+      <div><span class="badge avoid">Not for you</span></div>
+    </div>
+    <div class="try"><b>Try it:</b> keep Jain and Nut allergy selected, open Gulmohar Kitchen, tap Dal Tadka, send the question to the restaurant, then check out and see the kitchen ticket. Restaurant replies and menu data are simulated.</div>
+  </aside>
+  <main class="phone" id="phone"></main>
+</div>
+
+<script>
+/* ---------- data ---------- */
+var PREFS=[
+ {id:'jain',label:'Jain',sub:'No onion, garlic or root vegetables',forbid:['meat','fish','shellfish','egg','onion','garlic','root']},
+ {id:'veg',label:'Vegetarian',sub:'No meat, fish or shellfish',forbid:['meat','fish','shellfish']},
+ {id:'egg',label:'Eggless',sub:'No egg',forbid:['egg']},
+ {id:'nuts',label:'Nut allergy',sub:'Strict. Traces count as a risk',forbid:['nuts']},
+ {id:'gluten',label:'Gluten-free',sub:'No wheat, maida or barley',forbid:['gluten']},
+ {id:'lactose',label:'Lactose-free',sub:'No milk, paneer, curd, cream or ghee',forbid:['dairy']},
+ {id:'sugar',label:'Low sugar',sub:'Skip sweets and sugary gravies',forbid:['sugar']}
+];
+var TAGN={meat:'meat',fish:'fish',shellfish:'shellfish',egg:'egg',dairy:'dairy',gluten:'gluten',nuts:'nuts',onion:'onion',garlic:'garlic',root:'root vegetables',sugar:'added sugar',soy:'soy'};
+var REST=[
+ {id:'gk',name:'Gulmohar Kitchen',cuisine:'North Indian, Thali',time:'32 min',rating:'4.4',fee:'Rs 300 for two'},
+ {id:'bl',name:'Banyan Leaf',cuisine:'South Indian, Tiffin',time:'25 min',rating:'4.5',fee:'Rs 200 for two'},
+ {id:'lw',name:'Lotus Wok',cuisine:'Pan-Asian, Chinese',time:'38 min',rating:'4.2',fee:'Rs 450 for two'}
+];
+var DISH=[
+ {id:'g1',r:'gk',v:1,name:'Dal Tadka',p:189,d:'Yellow lentils, cumin tempering',tags:['onion','garlic'],mod:['onion','garlic'],may:[]},
+ {id:'g2',r:'gk',v:1,name:'Paneer Butter Masala',p:289,d:'Paneer in a tomato and cashew gravy',tags:['dairy','onion','garlic','nuts'],mod:['onion','garlic'],may:[]},
+ {id:'g3',r:'gk',v:1,name:'Jeera Rice',p:149,d:'Basmati tossed with cumin',tags:[],mod:[],may:[]},
+ {id:'g4',r:'gk',v:1,name:'Dal Khichdi',p:169,d:'Rice and moong dal, finished with ghee',tags:['dairy'],mod:[],may:[]},
+ {id:'g5',r:'gk',v:1,name:'Bhindi Masala',p:199,d:'Okra with dry spices',tags:['onion'],mod:['onion'],may:[],decline:1},
+ {id:'g6',r:'gk',v:1,name:'Aloo Gobi',p:179,d:'Potato and cauliflower',tags:['root','onion','garlic'],mod:['onion','garlic'],may:[]},
+ {id:'g7',r:'gk',v:1,name:'Butter Naan',p:59,d:'Tandoor bread, brushed with butter',tags:['gluten','dairy'],mod:[],may:[]},
+ {id:'g8',r:'gk',v:0,name:'Chicken Tikka',p:329,d:'Charcoal grilled, yoghurt marinade',tags:['meat','dairy','garlic'],mod:[],may:[]},
+ {id:'g9',r:'gk',v:1,name:'Gulab Jamun (2 pc)',p:99,d:'Milk dumplings in sugar syrup',tags:['dairy','sugar','gluten'],mod:[],may:['nuts']},
+ {id:'b1',r:'bl',v:1,name:'Plain Dosa',p:99,d:'Crisp rice and urad crepe, sambar',tags:[],mod:[],may:[]},
+ {id:'b2',r:'bl',v:1,name:'Idli Sambar (2 pc)',p:89,d:'Steamed rice cakes, vegetable sambar',tags:['onion'],mod:['onion'],may:[]},
+ {id:'b3',r:'bl',v:1,name:'Masala Dosa',p:139,d:'Dosa filled with spiced potato',tags:['root','onion'],mod:['onion'],may:[]},
+ {id:'b4',r:'bl',v:1,name:'Curd Rice',p:109,d:'Cooled rice with curd and curry leaf',tags:['dairy'],mod:[],may:[]},
+ {id:'b5',r:'bl',v:1,name:'Lemon Rice',p:129,d:'Tempered with peanuts and curry leaf',tags:['nuts'],mod:['nuts'],may:[]},
+ {id:'b6',r:'bl',v:1,name:'Podi Idli',p:119,d:'Idli tossed in peanut and lentil powder',tags:['nuts'],mod:[],may:[]},
+ {id:'b7',r:'bl',v:1,name:'Filter Coffee',p:59,d:'Decoction with milk and sugar',tags:['dairy','sugar'],mod:[],may:[]},
+ {id:'l1',r:'lw',v:1,name:'Steamed Rice',p:129,d:'Plain, served hot',tags:[],mod:[],may:[]},
+ {id:'l2',r:'lw',v:1,name:'Veg Hakka Noodles',p:219,d:'Wok tossed with cabbage and carrot',tags:['gluten','soy','garlic','onion','root'],mod:['garlic','onion'],may:[]},
+ {id:'l3',r:'lw',v:1,name:'Chilli Paneer',p:259,d:'Paneer, peppers, soy chilli sauce',tags:['dairy','soy','garlic','onion'],mod:['garlic','onion'],may:[]},
+ {id:'l4',r:'lw',v:1,name:'Sesame Stir-fry Greens',p:239,d:'Pak choi and beans with sesame',tags:['soy'],mod:[],may:['nuts']},
+ {id:'l5',r:'lw',v:0,name:'Chicken Fried Rice',p:249,d:'Egg, chicken, spring onion',tags:['meat','egg','soy','onion'],mod:[],may:[]},
+ {id:'l6',r:'lw',v:1,name:'Veg Manchow Soup',p:159,d:'Spicy soup with crispy noodles',tags:['gluten','soy','garlic'],mod:['garlic'],may:[]}
+];
+
+/* ---------- state ---------- */
+var state={screen:'onboard',prefs:new Set(['jain','nuts']),rid:null,cart:{rid:null,items:{}},confirmed:{},declined:{},thread:{},sheet:null,hide:false,toast:''};
+var phone=document.getElementById('phone');
+var toastTimer=null;
+
+/* ---------- logic ---------- */
+function list(a){return a.length<2?a.join(''):a.slice(0,-1).join(', ')+' and '+a[a.length-1];}
+function cap(s){return s.charAt(0).toUpperCase()+s.slice(1);}
+function activePrefs(){return PREFS.filter(function(p){return state.prefs.has(p.id);});}
+function prefsFor(tags){
+  var out=[];activePrefs().forEach(function(p){if(tags.some(function(t){return p.forbid.indexOf(t)>-1;}))out.push(p.label);});
+  return out;
+}
+function evaluate(d){
+  var act=activePrefs();
+  var forbid=[];act.forEach(function(p){forbid=forbid.concat(p.forbid);});
+  var has=d.tags.filter(function(t){return forbid.indexOf(t)>-1;});
+  var may=d.may.filter(function(t){return forbid.indexOf(t)>-1;});
+  var mod=has.filter(function(t){return d.mod.indexOf(t)>-1;});
+  var hard=has.filter(function(t){return d.mod.indexOf(t)<0;});
+  if(!has.length&&!may.length)return {status:'safe',why:act.length?'Fits '+list(act.map(function(p){return p.label;})):'No filters set',mod:[],may:[]};
+  if(state.declined[d.id])return {status:'avoid',why:'Restaurant cannot change this dish',mod:mod,may:may};
+  if(hard.length)return {status:'avoid',why:'Contains '+list(hard.map(function(t){return TAGN[t];}))+' ('+list(prefsFor(hard))+')',mod:mod,may:may};
+  if(state.confirmed[d.id])return {status:'confirmed',why:'Restaurant will prepare it for you',mod:mod,may:may};
+  var parts=[];
+  if(mod.length)parts.push('Can be made without '+list(mod.map(function(t){return TAGN[t];})));
+  if(may.length)parts.push('may carry traces of '+list(may.map(function(t){return TAGN[t];})));
+  return {status:'ask',why:cap(parts.join(', and ')),mod:mod,may:may};
+}
+function label(s){return {safe:'Fits your diet',ask:'Ask restaurant',avoid:'Not for you',confirmed:'Confirmed'}[s];}
+function counts(rid){
+  var c={s:0,a:0,n:0};
+  DISH.filter(function(d){return d.r===rid;}).forEach(function(d){
+    var s=evaluate(d).status;
+    if(s==='safe'||s==='confirmed')c.s++;else if(s==='ask')c.a++;else c.n++;
+  });
+  return c;
+}
+function byId(id){return DISH.filter(function(d){return d.id===id;})[0];}
+function restOf(id){return REST.filter(function(r){return r.id===id;})[0];}
+function cartRows(){
+  return Object.keys(state.cart.items).map(function(id){var d=byId(id);return {d:d,q:state.cart.items[id],e:evaluate(d)};});
+}
+function totals(){
+  var sub=0;cartRows().forEach(function(r){sub+=r.d.p*r.q;});
+  var fee=sub>=499?0:29,tax=Math.round(sub*0.05);
+  return {sub:sub,fee:fee,tax:tax,total:sub+fee+tax,n:cartRows().reduce(function(a,r){return a+r.q;},0)};
+}
+function draftMsg(d,e){
+  var ask=[];
+  if(e.mod.length)ask.push('without '+list(e.mod.map(function(t){return TAGN[t];})));
+  if(e.may.length)ask.push('on clean utensils with no traces of '+list(e.may.map(function(t){return TAGN[t];})));
+  return 'Hi! My diet: '+list(activePrefs().map(function(p){return p.label;}))+'. Could you prepare '+d.name+' '+ask.join(', and ')+'? Thank you.';
+}
+function ticketNote(d,e){
+  var bits=[];
+  if(e.mod.length)bits.push('no '+e.mod.map(function(t){return TAGN[t];}).join(', no '));
+  if(e.may.length)bits.push('clean utensils, no '+e.may.map(function(t){return TAGN[t];}).join('/')+' traces');
+  return bits.join('; ');
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function rs(n){return 'Rs '+n;}
+
+/* ---------- views ---------- */
+function vm(d){return '<span class="vm '+(d.v?'v':'n')+'" title="'+(d.v?'Vegetarian':'Non-vegetarian')+'"></span>';}
+function passportHtml(){
+  var a=activePrefs();
+  return '<div class="passport"><div class="lab"><span>Your diet passport</span><button class="link" data-act="profile">Edit</button></div>'+
+    (a.length?a.map(function(p){return '<span class="chip">'+p.label+'</span>';}).join(''):'<span class="chip">No filters</span>')+'</div>';
+}
+function onboard(){
+  return '<div class="scroll"><div class="eyebrow">Diet Passport</div><h2 style="font-size:28px;margin-top:6px">Tell us how you eat</h2>'+
+  '<p style="color:var(--muted);margin:8px 0 0">Set it once. Every menu adjusts to it, dish by dish.</p>'+
+  '<div class="pref-list">'+PREFS.map(function(p){
+    var on=state.prefs.has(p.id);
+    return '<button class="pref" data-act="pref" data-id="'+p.id+'" aria-pressed="'+on+'"><span class="box">'+(on?'✓':'')+'</span><span><b>'+p.label+'</b><small>'+p.sub+'</small></span></button>';
+  }).join('')+'</div>'+
+  '<p class="fine">Allergy rules are strict. If a dish might carry traces, we show Ask restaurant instead of guessing.</p></div>'+
+  '<div class="bar"><button class="btn" data-act="start">See what I can eat</button></div>';
+}
+function home(){
+  var rows=REST.slice().sort(function(a,b){return counts(b.id).s-counts(a.id).s;});
+  return '<div class="scroll"><div class="eyebrow">Deliver to Home</div><h2 style="font-size:26px;margin-top:4px">What can you eat tonight?</h2>'+
+   passportHtml()+
+   rows.map(function(r){
+     var c=counts(r.id),t=c.s+c.a+c.n;
+     return '<button class="rest" data-act="open" data-id="'+r.id+'"><h3>'+r.name+'</h3><div class="meta">'+r.cuisine+' · '+r.rating+' ★ · '+r.time+' · '+r.fee+'</div>'+
+      '<div class="fitbar"><i class="s" style="flex:'+c.s+'"></i><i class="a" style="flex:'+c.a+'"></i><i class="n" style="flex:'+c.n+'"></i></div>'+
+      '<div class="counts"><span class="s">'+c.s+' of '+t+' fit you</span><span class="a">'+c.a+' to confirm</span><span class="n">'+c.n+' not for you</span></div></button>';
+   }).join('')+'</div>'+cartBar();
+}
+function menu(){
+  var r=restOf(state.rid),c=counts(r.id);
+  var order={safe:0,confirmed:0,ask:1,avoid:2};
+  var ds=DISH.filter(function(d){return d.r===r.id;}).map(function(d){return {d:d,e:evaluate(d)};});
+  ds.sort(function(a,b){return order[a.e.status]-order[b.e.status];});
+  if(state.hide)ds=ds.filter(function(x){return x.e.status!=='avoid';});
+  return '<div class="scroll"><div class="topline"><button class="back" data-act="home">← Restaurants</button></div>'+
+   '<h2 style="font-size:26px;margin-top:6px">'+r.name+'</h2><div style="color:var(--muted);font-size:13px;margin-top:3px">'+r.cuisine+' · '+r.rating+' ★ · '+r.time+'</div>'+
+   passportHtml()+
+   '<div class="counts" style="margin-top:12px"><span class="s">'+c.s+' fit you</span><span class="a">'+c.a+' to confirm</span><span class="n">'+c.n+' not for you</span></div>'+
+   '<div class="seg"><span>Menu</span><button class="toggle" data-act="hide" aria-pressed="'+state.hide+'"><span class="sw"></span>Hide dishes that don’t fit</button></div>'+
+   ds.map(function(x){
+     var d=x.d,e=x.e,q=state.cart.items[d.id]||0,btn='';
+     if(e.status==='safe'||e.status==='confirmed')btn='<button class="add" data-act="add" data-id="'+d.id+'">'+(q?'Added '+q:'Add')+'</button>';
+     else if(e.status==='ask')btn='<button class="add ask" data-act="sheet" data-id="'+d.id+'">Ask</button>';
+     return '<div class="dish'+(e.status==='avoid'?' dim':'')+'"><button class="main" data-act="sheet" data-id="'+d.id+'">'+
+      '<div class="nm">'+vm(d)+'<span>'+d.name+'</span></div><div class="ds">'+d.d+'</div><div class="pr">'+rs(d.p)+'</div>'+
+      '<div class="why '+(e.status==='confirmed'?'safe':e.status)+'">'+esc(e.why)+'</div></button>'+
+      '<div class="act"><span class="badge '+e.status+'">'+label(e.status)+'</span>'+btn+'</div></div>';
+   }).join('')+'</div>'+cartBar();
+}
+function cartBar(){
+  var t=totals();
+  if(!t.n)return '';
+  return '<div class="bar"><button class="btn" data-act="cart"><span>'+t.n+' item'+(t.n>1?'s':'')+' · '+rs(t.sub)+'</span><span>View cart →</span></button></div>';
+}
+function sheet(){
+  if(state.sheet==='profile'){
+    return '<div class="scrim" data-act="close"><div class="sheet" data-stop="1"><h2>Your diet passport</h2><div class="pref-list">'+PREFS.map(function(p){
+      var on=state.prefs.has(p.id);
+      return '<button class="pref" data-act="pref" data-id="'+p.id+'" aria-pressed="'+on+'"><span class="box">'+(on?'✓':'')+'</span><span><b>'+p.label+'</b><small>'+p.sub+'</small></span></button>';
+    }).join('')+'</div><div class="row"><button class="btn" data-act="close">Done</button></div></div></div>';
+  }
+  var d=byId(state.sheet),e=evaluate(d),th=state.thread[d.id];
+  var forbid=[];activePrefs().forEach(function(p){forbid=forbid.concat(p.forbid);});
+  var tags=d.tags.map(function(t){return '<span class="tag'+(forbid.indexOf(t)>-1?' hit':'')+'">'+TAGN[t]+'</span>';}).join('');
+  var traces=d.may.map(function(t){return '<span class="tag trace">may have '+TAGN[t]+'</span>';}).join('');
+  var body='';
+  if(e.status==='ask'||th){
+    body+='<div class="sec"><div class="eyebrow">Ask the restaurant</div>';
+    if(!th){
+      body+='<textarea id="msg" aria-label="Message to restaurant">'+esc(draftMsg(d,e))+'</textarea><div class="row"><button class="btn" data-act="send" data-id="'+d.id+'">Send to restaurant</button></div>';
+    }else{
+      body+='<div class="thread"><div class="msg me">'+esc(th.text)+'</div>';
+      if(th.stage==='sent')body+='<div class="typing">Restaurant is typing…</div>';
+      else body+='<div class="msg them">'+esc(th.reply)+'<small>Demo reply. Real replies would come from the restaurant.</small></div>';
+      body+='</div>';
+    }
+    body+='</div>';
+  }
+  var foot='';
+  if(e.status==='safe'||e.status==='confirmed')foot='<div class="row"><button class="btn" data-act="add" data-id="'+d.id+'" data-close="1">Add to cart · '+rs(d.p)+'</button></div>';
+  else if(e.status==='avoid')foot='<div class="row"><button class="btn ghost" data-act="close">Back to menu</button></div>';
+  else foot='<div class="row"><button class="btn ghost" data-act="close">Back to menu</button></div>';
+  return '<div class="scrim" data-act="close"><div class="sheet" data-stop="1"><div class="nm" style="display:flex;gap:8px;align-items:center">'+vm(d)+'<span class="badge '+e.status+'">'+label(e.status)+'</span></div>'+
+    '<h2 style="margin-top:10px">'+d.name+'</h2><div style="color:var(--muted);margin-top:4px">'+d.d+' · '+rs(d.p)+'</div>'+
+    '<div class="why '+(e.status==='confirmed'?'safe':e.status)+'" style="font-size:14px">'+esc(e.why)+'</div>'+
+    '<div class="sec"><div class="eyebrow">What’s in it</div><div class="tags">'+(tags||'<span class="tag">No flagged ingredients</span>')+traces+'</div></div>'+body+foot+'</div></div>';
+}
+function cart(){
+  var rows=cartRows(),t=totals(),r=restOf(state.cart.rid);
+  var bad=rows.filter(function(x){return x.e.status==='avoid';});
+  var ask=rows.filter(function(x){return x.e.status==='ask';});
+  var chk;
+  if(bad.length)chk='<div class="check bad"><b>'+bad.length+' dish'+(bad.length>1?'es don’t':' doesn’t')+' fit your passport</b><p>'+esc(bad[0].d.name)+': '+esc(bad[0].e.why)+'. Remove it to continue.</p></div>';
+  else if(ask.length)chk='<div class="check warn"><b>'+ask.length+' dish'+(ask.length>1?'es need':' needs')+' a quick check</b><p>'+esc(ask[0].d.name)+': '+esc(ask[0].e.why)+'.</p><div class="row" style="margin-top:10px"><button class="btn small" data-act="sheet" data-id="'+ask[0].d.id+'">Ask restaurant</button></div></div>';
+  else chk='<div class="check ok"><b>Everything matches your passport</b><p>'+esc(list(activePrefs().map(function(p){return p.label;}))||'No filters')+'. Your diet goes to the kitchen with the order.</p></div>';
+  var cta=bad.length?'<button class="btn" disabled>Remove conflicting dish</button>':ask.length?'<button class="btn" data-act="sheet" data-id="'+ask[0].d.id+'">Confirm '+ask.length+' dish'+(ask.length>1?'es':'')+' first</button>':'<button class="btn" data-act="place">Place order · '+rs(t.total)+'</button>';
+  return '<div class="scroll"><div class="topline"><button class="back" data-act="menu">← '+r.name+'</button></div><h2 style="font-size:26px;margin-top:6px">Your cart</h2>'+
+   rows.map(function(x){
+     return '<div class="line"><div class="t"><b style="display:flex;gap:8px;align-items:center">'+vm(x.d)+x.d.name+'</b><span class="badge '+x.e.status+'" style="margin-top:4px">'+label(x.e.status)+'</span></div>'+
+      '<div class="qty"><button data-act="dec" data-id="'+x.d.id+'" aria-label="Remove one">−</button><span>'+x.q+'</span><button data-act="inc" data-id="'+x.d.id+'" aria-label="Add one">+</button></div>'+
+      '<div style="min-width:62px;text-align:right;font-weight:600;font-variant-numeric:tabular-nums">'+rs(x.d.p*x.q)+'</div></div>';
+   }).join('')+chk+
+   '<div class="bill"><div><span>Item total</span><span>'+rs(t.sub)+'</span></div><div><span>Delivery</span><span>'+(t.fee?rs(t.fee):'Free')+'</span></div><div><span>Taxes</span><span>'+rs(t.tax)+'</span></div><div class="tot"><span>To pay</span><span>'+rs(t.total)+'</span></div></div></div>'+
+   '<div class="bar">'+cta+'</div>';
+}
+function done(){
+  var rows=cartRows(),a=activePrefs();
+  var flags=a.map(function(p){return '<span class="flag">'+p.label.toUpperCase()+'</span>';}).join('');
+  var items=rows.map(function(x){
+    var n=ticketNote(x.d,x.e);
+    return '<li><span>'+x.q+' × '+esc(x.d.name)+'</span>'+(n?'<br><span style="color:var(--avoid);font-weight:700">↳ '+esc(n)+'</span>':'')+'</li>';
+  }).join('');
+  return '<div class="scroll"><div class="okmark">✓</div><h2 style="font-size:28px">Order placed</h2><p style="color:var(--muted);margin:8px 0 0">'+restOf(state.cart.rid).name+' is preparing it. Arriving in about '+restOf(state.cart.rid).time+'.</p>'+
+   '<div class="eyebrow" style="margin-top:22px">What the kitchen sees</div>'+
+   '<div class="ticket"><div class="hd"><span>ORDER #4821</span><span>DIET FLAGS</span></div><div class="flags">'+(flags||'<span class="tag">NONE</span>')+'</div><div style="border-top:1px dashed var(--fg);padding-top:8px"><ul>'+items+'</ul></div></div>'+
+   '<p class="fine">Prototype. No real order was placed.</p></div>'+
+   '<div class="bar"><button class="btn ghost" data-act="reset">Start over</button></div>';
+}
+
+/* ---------- render ---------- */
+function render(){
+  var keep=phone.querySelector('.scroll'),top=keep?keep.scrollTop:0;
+  var html='';
+  if(state.screen==='onboard')html=onboard();
+  else if(state.screen==='home')html=home();
+  else if(state.screen==='menu')html=menu();
+  else if(state.screen==='cart')html=cart();
+  else html=done();
+  if(state.sheet)html+=sheet();
+  if(state.toast)html+='<div class="toast" role="status">'+esc(state.toast)+'</div>';
+  phone.innerHTML=html;
+  var sc=phone.querySelector('.scroll');if(sc)sc.scrollTop=top;
+}
+function toast(m){
+  state.toast=m;render();clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){state.toast='';render();},1800);
+}
+function addItem(id){
+  var d=byId(id);
+  if(state.cart.rid&&state.cart.rid!==d.r){state.cart={rid:null,items:{}};}
+  state.cart.rid=d.r;
+  state.cart.items[id]=(state.cart.items[id]||0)+1;
+}
+
+/* ---------- events ---------- */
+phone.addEventListener('click',function(ev){
+  var el=ev.target.closest('[data-act]');
+  if(!el)return;
+  var act=el.getAttribute('data-act'),id=el.getAttribute('data-id');
+  if(act==='close'&&el.classList.contains('scrim')&&ev.target!==el)return;
+  if(act==='pref'){state.prefs.has(id)?state.prefs.delete(id):state.prefs.add(id);render();}
+  else if(act==='start'){state.screen='home';render();}
+  else if(act==='profile'){state.sheet='profile';render();}
+  else if(act==='close'){state.sheet=null;render();}
+  else if(act==='open'){state.rid=id;state.screen='menu';render();}
+  else if(act==='home'){state.screen='home';render();}
+  else if(act==='menu'){state.screen='menu';state.rid=state.cart.rid||state.rid;render();}
+  else if(act==='hide'){state.hide=!state.hide;render();}
+  else if(act==='sheet'){state.sheet=id;render();}
+  else if(act==='add'){
+    var wasOther=state.cart.rid&&state.cart.rid!==byId(id).r;
+    addItem(id);
+    if(el.getAttribute('data-close'))state.sheet=null;
+    toast(wasOther?'Started a new cart for this restaurant':'Added '+byId(id).name);
+  }
+  else if(act==='cart'){state.screen='cart';state.toast='';render();}
+  else if(act==='inc'){state.cart.items[id]++;render();}
+  else if(act==='dec'){
+    state.cart.items[id]--;
+    if(state.cart.items[id]<=0){delete state.cart.items[id];}
+    if(!Object.keys(state.cart.items).length){state.cart.rid=null;state.screen='menu';}
+    render();
+  }
+  else if(act==='send'){
+    var d=byId(id),ta=document.getElementById('msg');
+    state.thread[id]={text:ta?ta.value:draftMsg(d,evaluate(d)),stage:'sent',reply:''};
+    render();
+    setTimeout(function(){
+      var th=state.thread[id];if(!th)return;
+      if(d.decline){state.declined[id]=true;th.reply='Sorry, the masala base is cooked in bulk with onion, so we can’t remove it for this dish. Our Dal Tadka can be made without onion and garlic.';}
+      else{state.confirmed[id]=true;th.reply='Yes, we can do that. The chef has noted it on your order.';}
+      th.stage='reply';render();
+    },1600);
+  }
+  else if(act==='place'){state.screen='done';render();}
+  else if(act==='reset'){state.cart={rid:null,items:{}};state.confirmed={};state.declined={};state.thread={};state.sheet=null;state.screen='home';render();}
+});
+render();
+</script>
+
+</body>
+</html>
